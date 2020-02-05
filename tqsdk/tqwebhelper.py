@@ -281,7 +281,8 @@ class TqWebHelper(object):
 
     async def link_wsserver(self):
         async def lambda_connection_handler(conn, path): await self.connection_handler(conn)
-        async with websockets.serve(lambda_connection_handler, host=self._http_server_host, port=0) as server:
+        ws_host = "0.0.0.0" if self._http_server_host != "127.0.0.1" else "127.0.0.1"
+        async with websockets.serve(lambda_connection_handler, host=ws_host, port=0) as server:
             port = server.server.sockets[0].getsockname()[1]
             await self.web_port_chan.send({'port': port})
             await asyncio.sleep(100000000000)
@@ -329,11 +330,13 @@ class TqWebHelper(object):
         runner = web.AppRunner(app)
         await runner.setup()
         server_socket = socket.socket()
-        server_socket.bind((self._http_server_host, self._http_server_port))
+        server_socket.bind(
+            ("0.0.0.0" if self._http_server_host != "127.0.0.1" else "127.0.0.1", self._http_server_port))
         address = server_socket.getsockname()
         site = web.SockSite(runner, server_socket)
         await site.start()
-        self._logger.info("您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=address[0], port=address[1]))
+        self._logger.info(
+            "您可以访问 http://{ip}:{port} 查看策略绘制出的 K 线图形。".format(ip=self._http_server_host, port=address[1]))
         await asyncio.sleep(100000000000)
 
     @staticmethod
